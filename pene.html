@@ -1,0 +1,2369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>FREKERNCY - Music Player</title>
+  <meta name="description" content="Tu reproductor de musica personal con Google Drive y TeraBox">
+  <meta name="theme-color" content="#8B5CF6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    *:focus {
+      outline: none;
+    }
+    
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+      outline: none;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --bg-hover: #222222;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --text-muted: #666666;
+      --purple-primary: #8B5CF6;
+      --purple-hover: #7C3AED;
+      --purple-glow: rgba(139, 92, 246, 0.3);
+      --purple-dim: rgba(139, 92, 246, 0.15);
+      --border-color: #2a2a2a;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    .main-container { display: flex; flex: 1; overflow: hidden; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .logo { padding: 24px; border-bottom: 1px solid var(--border-color); }
+    .logo h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; color: var(--purple-primary); }
+
+    .nav { padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+
+    .nav-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .nav-section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .nav-item:hover { background-color: var(--bg-tertiary); color: var(--text-primary); }
+    .nav-item.active { background-color: var(--purple-primary); color: white; }
+    .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    .playlist-count {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-tertiary);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .nav-item.active .playlist-count { background: rgba(255,255,255,0.2); color: white; }
+
+    /* Content */
+    .content { flex: 1; overflow-y: auto; padding: 32px; padding-bottom: 120px; }
+
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .content-header h2 { font-size: 2rem; font-weight: 700; }
+
+    /* Search Bar */
+    .search-container { margin-bottom: 24px; position: relative; }
+
+    .search-input {
+      width: 100%;
+      max-width: 400px;
+      padding: 12px 16px 12px 44px;
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--purple-primary);
+      box-shadow: 0 0 0 3px var(--purple-glow);
+    }
+
+    .search-input::placeholder { color: var(--text-muted); }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .search-clear {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      display: none;
+    }
+
+    .search-clear.visible { display: block; }
+    .search-clear:hover { color: var(--text-primary); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-family: inherit;
+    }
+
+    .btn-primary { background-color: var(--purple-primary); color: white; }
+    .btn-primary:hover { background-color: var(--purple-hover); box-shadow: 0 0 20px var(--purple-glow); }
+    .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .btn-secondary:hover { background-color: var(--bg-hover); }
+    .btn-danger { background-color: transparent; color: #ef4444; border: 1px solid #ef4444; }
+    .btn-danger:hover { background-color: rgba(239, 68, 68, 0.1); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Loading */
+    .loading { display: flex; align-items: center; gap: 12px; padding: 20px; color: var(--text-secondary); }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--purple-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Track List */
+    .track-list { display: flex; flex-direction: column; gap: 2px; }
+
+    .track-item {
+      display: grid;
+      grid-template-columns: 56px 1fr 120px 60px;
+      gap: 16px;
+      align-items: center;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    
+    .track-item > .track-thumbnail {
+      margin: 0;
+    }
+
+    .track-item:hover { background-color: var(--bg-tertiary); }
+    .track-item.playing { background-color: var(--purple-dim); }
+    .track-item.playing .track-title { color: var(--purple-primary); }
+
+    .track-thumbnail {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-hover) 50%, var(--bg-tertiary) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      margin: 0 auto;
+    }
+    
+    .track-thumbnail .fallback-icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-hover) 50%, var(--bg-tertiary) 100%);
+    }
+    
+    .track-thumbnail img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 1;
+    }
+
+    .track-thumbnail .play-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 2;
+    }
+
+    .track-item:hover .track-thumbnail .play-overlay { opacity: 1; }
+    .track-item.playing .track-thumbnail .play-overlay { opacity: 1; }
+
+    .track-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+    .track-title {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-artist {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-folder {
+      font-size: 0.75rem;
+      color: var(--purple-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-album {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-duration { font-size: 0.875rem; color: var(--text-muted); text-align: right; }
+
+    /* Playing Indicator */
+    .playing-indicator { display: flex; gap: 2px; align-items: flex-end; height: 16px; justify-content: center; }
+
+    .playing-indicator span {
+      width: 3px;
+      background-color: var(--purple-primary);
+      animation: sound 0.5s infinite alternate;
+    }
+
+    .playing-indicator span:nth-child(1) { animation-delay: 0s; }
+    .playing-indicator span:nth-child(2) { animation-delay: 0.1s; }
+    .playing-indicator span:nth-child(3) { animation-delay: 0.2s; }
+    .playing-indicator span:nth-child(4) { animation-delay: 0.3s; }
+
+    @keyframes sound { 0% { height: 4px; } 100% { height: 16px; } }
+
+    /* Player Bar */
+    .player {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 90px;
+      background-color: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .player-track { display: flex; align-items: center; gap: 16px; min-width: 0; overflow: hidden; }
+
+    .player-cover {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-hover) 50%, var(--bg-tertiary) 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .player-cover svg { width: 24px; height: 24px; color: white; }
+
+    .player-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; overflow: hidden; max-width: 200px; }
+
+    .player-title {
+      font-weight: 500;
+      font-size: 0.875rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .player-artist { 
+      font-size: 0.75rem; 
+      color: var(--text-secondary); 
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .player-buttons { display: flex; align-items: center; gap: 16px; }
+
+    .player-buttons button {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+      padding: 8px;
+      border-radius: 50%;
+    }
+
+    .player-buttons button:hover { color: var(--text-primary); }
+    .player-buttons button.active { color: var(--purple-primary); }
+
+    .play-btn {
+      width: 40px;
+      height: 40px;
+      background-color: var(--text-primary) !important;
+      color: var(--bg-primary) !important;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .play-btn:hover { transform: scale(1.05); }
+
+    .progress-container { display: flex; align-items: center; gap: 12px; width: 100%; max-width: 600px; }
+    .progress-time { font-size: 0.75rem; color: var(--text-muted); min-width: 40px; }
+    .progress-time:last-child { text-align: right; }
+
+    .progress-bar {
+      flex: 1;
+      height: 4px;
+      background-color: var(--bg-tertiary);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-bar:hover { height: 6px; }
+
+    .progress-fill {
+      height: 100%;
+      background-color: var(--purple-primary);
+      border-radius: 2px;
+      transition: width 0.1s linear;
+      position: relative;
+    }
+
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      background-color: var(--purple-primary);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .progress-bar:hover .progress-fill::after { opacity: 1; }
+
+    .player-volume { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+
+    .volume-slider {
+      width: 100px;
+      height: 4px;
+      background-color: var(--bg-tertiary);
+      border-radius: 2px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .volume-fill { 
+      height: 100%; 
+      background-color: var(--text-primary); 
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .volume-fill::after {
+      content: '';
+      position: absolute;
+      right: -5px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      background-color: var(--text-primary);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .volume-slider:hover .volume-fill::after { opacity: 1; }
+
+    .volume-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .volume-btn:hover { color: var(--text-primary); }
+
+    /* Config Section */
+    .config-section {
+      background-color: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border-color);
+    }
+
+    .config-section h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--purple-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-section p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .config-grid { display: grid; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    .form-group label { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px 16px;
+      background-color: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--purple-primary);
+      box-shadow: 0 0 0 3px var(--purple-glow);
+    }
+
+    .form-group input::placeholder { color: var(--text-muted); }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.5; }
+    .form-actions { display: flex; gap: 12px; margin-top: 8px; }
+
+    /* Instructions */
+    .instructions {
+      background-color: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .instructions summary {
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .instructions summary:hover { color: var(--text-primary); }
+
+    .instructions ol {
+      margin-top: 12px;
+      padding-left: 20px;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      line-height: 1.8;
+    }
+
+    .instructions code {
+      background-color: var(--bg-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.8em;
+    }
+
+    .instructions a { color: var(--purple-primary); text-decoration: none; }
+    .instructions a:hover { text-decoration: underline; }
+
+    /* Status */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+    .status-dot.connected { background: #22c55e; }
+    .status-text { font-size: 0.875rem; color: var(--text-secondary); }
+    .status-text strong { color: var(--text-primary); }
+
+    /* Empty State */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+    .empty-state svg { width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 20px; }
+    .empty-state h3 { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+    .empty-state p { max-width: 400px; margin: 0 auto 20px; line-height: 1.6; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* Playlist Grid for mobile */
+    .playlist-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .playlist-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .playlist-card:hover { background: var(--bg-tertiary); border-color: var(--purple-primary); }
+    .playlist-card.active { background: var(--purple-dim); border-color: var(--purple-primary); }
+
+    .playlist-card-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--purple-primary), var(--purple-hover));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+    }
+
+    .playlist-card-icon svg { width: 24px; height: 24px; color: white; }
+    .playlist-card-name { font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .playlist-card-count { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* Player and mobile cover images */
+    .player-cover img, .mobile-track-cover img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .content { padding: 16px; padding-top: 70px; padding-bottom: 200px; }
+      .content-header h2 { font-size: 1.5rem; }
+      .search-input { max-width: 100%; }
+      .track-item { grid-template-columns: 44px 1fr 40px; gap: 12px; padding: 8px 12px; }
+      .track-thumbnail { width: 44px; height: 44px; }
+      .track-album { display: none; }
+      .track-title { font-size: 0.875rem; }
+      .track-artist { font-size: 0.75rem; }
+      .track-duration { font-size: 0.75rem; }
+      
+      .player { 
+        display: flex !important;
+        flex-direction: column;
+        height: auto;
+        min-height: 100px;
+        padding: 12px 16px 16px;
+        gap: 8px;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .player-track {
+        display: none !important;
+      }
+      
+      .player-cover { width: 44px; height: 44px; }
+      .player-info { max-width: calc(100vw - 100px); }
+      .player-title { font-size: 0.8rem; }
+      .player-artist { font-size: 0.7rem; }
+      
+      .player-controls {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+      
+      .player-buttons { 
+        gap: 20px; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+      }
+      .player-buttons button { padding: 8px; }
+      .player-buttons button svg { width: 24px; height: 24px; }
+      .play-btn { width: 52px; height: 52px; }
+      .play-btn svg { width: 26px !important; height: 26px !important; }
+      .progress-container { 
+        max-width: 100%; 
+        width: 100%; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 8px;
+      }
+      .progress-time { font-size: 0.75rem; min-width: 40px; text-align: center; }
+      
+      .player-volume { display: none !important; }
+
+      /* Mobile header with nav */
+      .mobile-header {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        z-index: 99;
+      }
+
+      .mobile-nav {
+        display: flex;
+        justify-content: space-around;
+        padding: 8px 12px;
+      }
+      
+      .mobile-nav .nav-item {
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 16px;
+        font-size: 0.65rem;
+        text-align: center;
+        border-radius: 8px;
+        -webkit-tap-highlight-color: transparent;
+        outline: none;
+        border: none;
+        user-select: none;
+      }
+      
+      .mobile-nav .nav-item:focus,
+      .mobile-nav .nav-item:active {
+        outline: none;
+        box-shadow: none;
+      }
+      
+      .mobile-nav .nav-item svg { width: 20px; height: 20px; }
+      
+      .mobile-nav .nav-item span { display: block; }
+
+      /* Current track display above player */
+      .mobile-current-track {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        background-color: var(--bg-secondary);
+        position: fixed;
+        bottom: 110px;
+        left: 0;
+        right: 0;
+        border-top: 1px solid var(--border-color);
+        z-index: 99;
+      }
+
+      .mobile-current-track.hidden {
+        display: none;
+      }
+
+      .mobile-track-cover {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--purple-primary) 0%, var(--purple-hover) 50%, var(--bg-tertiary) 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .mobile-track-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .mobile-track-cover svg {
+        width: 20px;
+        height: 20px;
+        color: white;
+      }
+
+      .mobile-track-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .mobile-track-title {
+        font-weight: 500;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .mobile-track-artist {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .config-section { padding: 16px; }
+      .config-section h3 { font-size: 1rem; }
+      .form-group input, .form-group select { padding: 10px 14px; }
+      .btn { padding: 10px 16px; font-size: 0.8rem; }
+      .form-actions { flex-wrap: wrap; }
+    }
+    
+    @media (max-width: 480px) {
+      .content { padding: 12px; padding-top: 65px; padding-bottom: 200px; }
+      .track-item { grid-template-columns: 40px 1fr; gap: 10px; }
+      .mobile-track-cover { width: 40px; height: 40px; }
+      .mobile-current-track { bottom: 100px; }
+      .track-duration { display: none; }
+      .player-info { max-width: calc(100vw - 90px); }
+      .mobile-nav .nav-item { padding: 6px 12px; }
+      .playlist-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    }
+
+    @media (min-width: 769px) {
+      .mobile-header { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="main-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="logo">
+          <h1>FREKERNCY</h1>
+        </div>
+        <nav class="nav">
+          <a href="#" class="nav-item active" data-view="player" data-playlist="all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
+            <span>Todas las canciones</span>
+            <span class="playlist-count" id="all-count">0</span>
+          </a>
+          <a href="#" class="nav-item" data-view="admin">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>Configuracion</span>
+          </a>
+
+          <div class="nav-section" id="playlists-section" style="display: none;">
+            <div class="nav-section-title">Playlists (Carpetas)</div>
+            <div id="playlists-nav"></div>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="content">
+        <!-- Player View -->
+        <div id="player-view" class="view active">
+          <div class="content-header">
+            <h2 id="view-title">Todas las canciones</h2>
+          </div>
+          
+          <!-- Search Bar -->
+          <div class="search-container" id="search-container">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" class="search-input" id="search-input" placeholder="Buscar canciones...">
+            <button class="search-clear" id="search-clear">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div id="track-list" class="track-list"></div>
+          
+          <div id="empty-state" class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
+            <h3>Sin canciones</h3>
+            <p>Configura tu carpeta de Google Drive o TeraBox para cargar tu musica automaticamente.</p>
+            <button class="btn btn-primary" onclick="ui.showView('admin')">Ir a Configuracion</button>
+          </div>
+        </div>
+
+        <!-- Playlists View (Mobile) -->
+        <div id="playlists-view" class="view">
+          <div class="content-header">
+            <h2>Playlists</h2>
+          </div>
+          <div id="playlist-grid" class="playlist-grid"></div>
+        </div>
+
+        <!-- Admin View -->
+        <div id="admin-view" class="view">
+          <div class="content-header">
+            <h2>Configuracion</h2>
+          </div>
+
+          <!-- Storage Provider -->
+          <div class="config-section">
+            <h3>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+              </svg>
+              Proveedor de almacenamiento
+            </h3>
+            <p>Selecciona donde tienes tu musica guardada.</p>
+            
+            <div class="form-group">
+              <label for="storage-provider">Proveedor</label>
+              <select id="storage-provider">
+                <option value="gdrive">Google Drive</option>
+                <option value="terabox">TeraBox</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Google Drive Config -->
+          <div id="gdrive-config">
+            <div class="config-section">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                API Key de Google
+              </h3>
+              <p>Necesitas una API Key de Google Cloud para acceder a los archivos de tu Drive.</p>
+              
+              <div class="config-grid">
+                <div class="form-group">
+                  <label for="api-key">API Key</label>
+                  <input type="text" id="api-key" placeholder="AIzaSy..." autocomplete="off">
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-secondary" onclick="saveApiKey()">Guardar API Key</button>
+                </div>
+              </div>
+
+              <details class="instructions">
+                <summary>Como obtener una API Key</summary>
+                <ol>
+                  <li>Ve a <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+                  <li>Crea un nuevo proyecto o selecciona uno existente</li>
+                  <li>Ve a <strong>APIs y servicios &gt; Biblioteca</strong></li>
+                  <li>Busca <strong>"Google Drive API"</strong> y habilitala</li>
+                  <li>Ve a <strong>APIs y servicios &gt; Credenciales</strong></li>
+                  <li>Haz clic en <strong>"Crear credenciales" &gt; "Clave de API"</strong></li>
+                  <li>Copia la clave y pegala aqui</li>
+                </ol>
+              </details>
+            </div>
+
+            <div class="config-section">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                Carpeta de Musica
+              </h3>
+              <p>Pega el enlace de tu carpeta compartida. Las subcarpetas se convertiran en playlists.</p>
+              
+              <div class="config-grid">
+                <div class="form-group">
+                  <label for="folder-url">URL de la carpeta de musica</label>
+                  <input type="url" id="folder-url" placeholder="https://drive.google.com/drive/folders/...">
+                  <p class="form-hint">Asegurate de que la carpeta este compartida como "Cualquier persona con el enlace puede ver"</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-section">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Carpeta de Miniaturas (Opcional)
+              </h3>
+              <p>Carpeta con imagenes que tengan el mismo nombre que las canciones (ej: "Artista - Cancion.jpg" para "Artista - Cancion.mp3")</p>
+              
+              <div class="config-grid">
+                <div class="form-group">
+                  <label for="thumbnails-url">URL de la carpeta de miniaturas</label>
+                  <input type="url" id="thumbnails-url" placeholder="https://drive.google.com/drive/folders/...">
+                  <p class="form-hint">Deja vacio si las imagenes estan en la misma carpeta que la musica</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="config-section">
+              <div class="form-actions">
+                <button class="btn btn-primary" onclick="loadFromDrive()" id="load-btn">Cargar musica</button>
+                <button class="btn btn-danger" onclick="clearLibrary()">Limpiar biblioteca</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TeraBox Config -->
+          <div id="terabox-config" style="display: none;">
+            <div class="config-section">
+              <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                Carpeta de TeraBox
+              </h3>
+              <p>Pega el enlace de tu carpeta compartida de TeraBox. Las subcarpetas se convertiran en playlists.</p>
+              
+              <div class="config-grid">
+                <div class="form-group">
+                  <label for="terabox-url">URL de la carpeta</label>
+                  <input type="url" id="terabox-url" placeholder="https://terabox.com/s/...">
+                  <p class="form-hint">Asegurate de que la carpeta este compartida publicamente</p>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-primary" onclick="loadFromTeraBox()" id="terabox-load-btn">Cargar musica</button>
+                  <button class="btn btn-danger" onclick="clearLibrary()">Limpiar biblioteca</button>
+                </div>
+              </div>
+
+              <details class="instructions">
+                <summary>Como compartir una carpeta de TeraBox</summary>
+                <ol>
+                  <li>Ve a <a href="https://terabox.com/" target="_blank">TeraBox</a> e inicia sesion</li>
+                  <li>Crea una carpeta y sube tus archivos de musica</li>
+                  <li>Haz clic derecho en la carpeta &gt; <strong>"Compartir"</strong></li>
+                  <li>Selecciona <strong>"Publico"</strong></li>
+                  <li>Copia el enlace y pegalo aqui</li>
+                </ol>
+              </details>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div class="status-bar" id="status-bar">
+            <div class="status-dot" id="status-dot"></div>
+            <span class="status-text" id="status-text">Sin configurar</span>
+          </div>
+
+          <!-- Loading indicator -->
+          <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <span id="loading-text">Cargando...</span>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Mobile Header (Nav only) -->
+    <div class="mobile-header">
+      <nav class="mobile-nav">
+        <a href="#" class="nav-item active" data-view="player" data-playlist="all">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+          </svg>
+          <span>Musica</span>
+        </a>
+        <a href="#" class="nav-item" data-view="playlists">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          <span>Playlists</span>
+        </a>
+        <a href="#" class="nav-item" data-view="admin">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          </svg>
+          <span>Config</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Mobile Current Track (above player) -->
+    <div class="mobile-current-track hidden" id="mobile-current-track">
+      <div class="mobile-track-cover" id="mobile-track-cover">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        </svg>
+      </div>
+      <div class="mobile-track-info">
+        <div class="mobile-track-title" id="mobile-track-title">Sin cancion</div>
+        <div class="mobile-track-artist" id="mobile-track-artist">-</div>
+      </div>
+    </div>
+
+    <!-- Player Bar -->
+    <div class="player" id="player-bar" style="display: none;">
+      <div class="player-track">
+        <div class="player-cover" id="player-cover">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+          </svg>
+        </div>
+        <div class="player-info">
+          <div class="player-title" id="player-title">Sin cancion</div>
+          <div class="player-artist" id="player-artist">-</div>
+        </div>
+      </div>
+
+      <div class="player-controls">
+        <div class="player-buttons">
+          <button id="shuffle-btn" title="Aleatorio">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4h4l3.5 7-3.5 7H4m16-14h-4l-3.5 7 3.5 7h4m-8-7h.01" />
+            </svg>
+          </button>
+          <button id="prev-btn" title="Anterior">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+            </svg>
+          </button>
+          <button class="play-btn" id="play-btn" title="Reproducir">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" id="play-icon">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </button>
+          <button id="next-btn" title="Siguiente">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+            </svg>
+          </button>
+          <button id="repeat-btn" title="Repetir">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
+        <div class="progress-container">
+          <span class="progress-time" id="current-time">0:00</span>
+          <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+          <span class="progress-time" id="duration">0:00</span>
+        </div>
+      </div>
+
+      <div class="player-volume">
+        <button class="volume-btn" id="volume-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+        </button>
+        <div class="volume-slider" id="volume-slider">
+          <div class="volume-fill" id="volume-fill" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="audio-player" preload="auto"></audio>
+
+  <script>
+    // ============== STATE ==============
+    const state = {
+      storageProvider: localStorage.getItem('frekerncy-provider') || 'gdrive',
+      apiKey: localStorage.getItem('frekerncy-api-key') || '',
+      folderUrl: localStorage.getItem('frekerncy-folder-url') || '',
+      thumbnailsUrl: localStorage.getItem('frekerncy-thumbnails-url') || '',
+      teraboxUrl: localStorage.getItem('frekerncy-terabox-url') || '',
+      allTracks: JSON.parse(localStorage.getItem('frekerncy-tracks') || '[]'),
+      playlists: JSON.parse(localStorage.getItem('frekerncy-playlists') || '{}'),
+      imageFiles: JSON.parse(localStorage.getItem('frekerncy-images') || '{"_byName":{}}'),
+      currentPlaylist: 'all',
+      currentTrackIndex: -1,
+      isPlaying: false,
+      isShuffle: false,
+      repeatMode: 'none',
+      volume: parseFloat(localStorage.getItem('frekerncy-volume') || '1'),
+      searchQuery: '',
+      playHistory: [],
+      historyIndex: -1,
+      savedTrackId: localStorage.getItem('frekerncy-current-track-id') || null,
+      savedCurrentTime: parseFloat(localStorage.getItem('frekerncy-current-time') || '0'),
+      thumbnailCache: {} // Cache para URLs de miniaturas
+    };
+
+    // Inicializar _byName si no existe
+    if (!state.imageFiles._byName) {
+      state.imageFiles._byName = {};
+    }
+
+    // ============== DOM ELEMENTS ==============
+    const DOM = {
+      audio: document.getElementById('audio-player'),
+      playerBar: document.getElementById('player-bar'),
+      playBtn: document.getElementById('play-btn'),
+      playIcon: document.getElementById('play-icon'),
+      prevBtn: document.getElementById('prev-btn'),
+      nextBtn: document.getElementById('next-btn'),
+      shuffleBtn: document.getElementById('shuffle-btn'),
+      repeatBtn: document.getElementById('repeat-btn'),
+      progressBar: document.getElementById('progress-bar'),
+      progressFill: document.getElementById('progress-fill'),
+      currentTime: document.getElementById('current-time'),
+      duration: document.getElementById('duration'),
+      playerTitle: document.getElementById('player-title'),
+      playerArtist: document.getElementById('player-artist'),
+      playerCover: document.getElementById('player-cover'),
+      volumeSlider: document.getElementById('volume-slider'),
+      volumeFill: document.getElementById('volume-fill'),
+      volumeBtn: document.getElementById('volume-btn'),
+      trackList: document.getElementById('track-list'),
+      emptyState: document.getElementById('empty-state'),
+      loading: document.getElementById('loading'),
+      loadingText: document.getElementById('loading-text'),
+      statusDot: document.getElementById('status-dot'),
+      statusText: document.getElementById('status-text'),
+      searchInput: document.getElementById('search-input'),
+      searchClear: document.getElementById('search-clear'),
+      searchContainer: document.getElementById('search-container'),
+      playlistGrid: document.getElementById('playlist-grid'),
+      storageProvider: document.getElementById('storage-provider'),
+      gdriveConfig: document.getElementById('gdrive-config'),
+      teraboxConfig: document.getElementById('terabox-config'),
+      thumbnailsUrl: document.getElementById('thumbnails-url'),
+      mobileCurrentTrack: document.getElementById('mobile-current-track'),
+      mobileTrackCover: document.getElementById('mobile-track-cover'),
+      mobileTrackTitle: document.getElementById('mobile-track-title'),
+      mobileTrackArtist: document.getElementById('mobile-track-artist')
+    };
+
+    const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'ogg', 'wav', 'flac', 'aac', 'wma', 'opus'];
+    const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+
+    // ============== UTILITIES ==============
+    const utils = {
+      extractFolderId: (url) => url.match(/folders\/([a-zA-Z0-9_-]+)/)?.[1] || null,
+      
+      extractTeraBoxId: (url) => {
+        const match = url.match(/\/s\/([a-zA-Z0-9_-]+)/);
+        return match ? match[1] : null;
+      },
+      
+      cleanFilename: (name) => {
+        let clean = name.replace(/\.[^.]+$/, '');
+        // Try to extract artist - title format
+        const parts = clean.split(' - ');
+        if (parts.length >= 2) {
+          return { title: parts.slice(1).join(' - ').trim(), artist: parts[0].trim() };
+        }
+        // Remove track numbers
+        clean = clean.replace(/^\d+[\s._-]*/, '').replace(/_/g, ' ').trim();
+        return { title: clean, artist: '' };
+      },
+      
+      formatTime: (seconds) => {
+        if (isNaN(seconds)) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      },
+      
+      // URL de streaming - usa la API de Google Drive con la API key (permite CORS)
+      getStreamUrl: (fileId, apiKey) => {
+        // La API de Google Drive permite streaming con la API key
+        return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&key=${apiKey}`;
+      },
+      
+      // URL alternativa usando export directo (puede fallar por CORS)
+      getDirectUrl: (fileId) => {
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+      },
+      
+      // URL de preview (ultima opcion)
+      getPreviewUrl: (fileId) => {
+        return `https://drive.google.com/uc?id=${fileId}&export=view`;
+      },
+      
+      // URL para thumbnails - usa thumbnail de Google Drive
+      getThumbnailUrl: (fileId, apiKey) => {
+        // Usa la URL de thumbnail nativa de Google Drive
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+      },
+      
+      debounce: (fn, delay) => {
+        let timeout;
+        return (...args) => {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => fn(...args), delay);
+        };
+      }
+    };
+
+    // ============== MEDIA SESSION API ==============
+    const mediaSession = {
+      init: () => {
+        if (!('mediaSession' in navigator)) return;
+        
+        navigator.mediaSession.setActionHandler('play', () => player.toggle());
+        navigator.mediaSession.setActionHandler('pause', () => player.toggle());
+        navigator.mediaSession.setActionHandler('previoustrack', () => player.prev());
+        navigator.mediaSession.setActionHandler('nexttrack', () => player.next());
+        navigator.mediaSession.setActionHandler('seekbackward', () => { DOM.audio.currentTime -= 10; });
+        navigator.mediaSession.setActionHandler('seekforward', () => { DOM.audio.currentTime += 10; });
+        
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (details.seekTime !== undefined) {
+            DOM.audio.currentTime = details.seekTime;
+          }
+        });
+      },
+      
+      update: (track) => {
+        if (!('mediaSession' in navigator)) return;
+        
+        const thumbnailUrl = ui.getThumbnailUrl(track);
+        const artworkList = thumbnailUrl 
+          ? [
+              { src: thumbnailUrl, sizes: '96x96', type: 'image/jpeg' },
+              { src: thumbnailUrl, sizes: '128x128', type: 'image/jpeg' },
+              { src: thumbnailUrl, sizes: '256x256', type: 'image/jpeg' },
+              { src: thumbnailUrl, sizes: '512x512', type: 'image/jpeg' }
+            ]
+          : [
+              { src: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect fill="#000000" width="512" height="512"/><path fill="#8B5CF6" d="M192 128v256l192-128z"/></svg>'), sizes: '512x512', type: 'image/svg+xml' }
+            ];
+        
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title,
+          artist: track.artist || 'FREKERNCY',
+          album: track.album || 'FREKERNCY',
+          artwork: artworkList
+        });
+      },
+      
+      updatePlaybackState: (isPlaying) => {
+        if (!('mediaSession' in navigator)) return;
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      },
+      
+      updatePositionState: () => {
+        if (!('mediaSession' in navigator) || !DOM.audio.duration) return;
+        
+        try {
+          navigator.mediaSession.setPositionState({
+            duration: DOM.audio.duration,
+            playbackRate: DOM.audio.playbackRate,
+            position: DOM.audio.currentTime
+          });
+        } catch (e) {}
+      }
+    };
+
+    // ============== API ==============
+    const api = {
+      scanFolder: async (folderId, playlistName, isRoot = false) => {
+        DOM.loadingText.textContent = `Escaneando: ${playlistName === 'root' ? 'carpeta principal' : playlistName}...`;
+        
+        let allFiles = [];
+        let pageToken = null;
+        
+        // Paginación para obtener todos los archivos
+        do {
+          const url = new URL('https://www.googleapis.com/drive/v3/files');
+          url.searchParams.set('q', `'${folderId}' in parents and trashed=false`);
+          url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType)');
+          url.searchParams.set('key', state.apiKey);
+          url.searchParams.set('pageSize', '100');
+          if (pageToken) {
+            url.searchParams.set('pageToken', pageToken);
+          }
+          
+          const response = await fetch(url.toString());
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'Error al acceder a Google Drive');
+          }
+          
+          const data = await response.json();
+          allFiles = allFiles.concat(data.files || []);
+          pageToken = data.nextPageToken;
+        } while (pageToken);
+        
+        // First pass: collect all files and store images globally by base name
+        const audioFiles = [];
+        const subfolders = [];
+        
+        for (const file of allFiles) {
+          if (file.mimeType === 'application/vnd.google-apps.folder') {
+            subfolders.push(file);
+          } else {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (AUDIO_EXTENSIONS.includes(ext)) {
+              audioFiles.push(file);
+            } else if (IMAGE_EXTENSIONS.includes(ext)) {
+              // Store ALL images globally by their base name (without extension)
+              const baseName = file.name.replace(/\.[^.]+$/, '').toLowerCase().trim();
+              if (!state.imageFiles._byName) {
+                state.imageFiles._byName = {};
+              }
+              state.imageFiles._byName[baseName] = file.id;
+
+            }
+          }
+        }
+        
+        // Process audio files
+        for (const file of audioFiles) {
+          const parsed = utils.cleanFilename(file.name);
+          const audioBaseName = file.name.replace(/\.[^.]+$/, '').toLowerCase().trim();
+          
+          const track = {
+            id: file.id,
+            title: parsed.title,
+            artist: parsed.artist || 'Desconocido',
+            album: isRoot ? '' : playlistName,
+            playlist: isRoot ? null : playlistName,
+            filename: file.name,
+            provider: 'gdrive',
+            imageBaseName: audioBaseName // Store for later lookup
+          };
+          
+          state.allTracks.push(track);
+          
+          if (!isRoot && playlistName) {
+            if (!state.playlists[playlistName]) {
+              state.playlists[playlistName] = [];
+            }
+            state.playlists[playlistName].push(track.id);
+          }
+        }
+        
+        // Process subfolders
+        for (const folder of subfolders) {
+          if (!state.playlists[folder.name]) {
+            state.playlists[folder.name] = [];
+          }
+          await api.scanFolder(folder.id, folder.name, false);
+        }
+      }
+    };
+
+    // ============== PLAYER ==============
+    const player = {
+      // Obtener todas las URLs posibles para un archivo
+      getPlaybackUrls: (track) => {
+        const urls = [];
+        
+        // 1. URL directa con export=download (mejor para archivos compartidos)
+        urls.push(`https://drive.google.com/uc?export=download&id=${track.id}`);
+        
+        // 2. URL de la API con API Key (requiere API habilitada)
+        if (state.apiKey) {
+          urls.push(`https://www.googleapis.com/drive/v3/files/${track.id}?alt=media&key=${state.apiKey}`);
+        }
+        
+        // 3. URL de export=view (alternativa)
+        urls.push(`https://drive.google.com/uc?id=${track.id}&export=view`);
+        
+        // 4. URL de open (ultima opcion)
+        urls.push(`https://drive.google.com/file/d/${track.id}/view`);
+        
+        return urls;
+      },
+      
+      play: (index, addToHistory = true) => {
+        if (index < 0 || index >= state.allTracks.length) return;
+        
+        if (addToHistory && state.currentTrackIndex !== -1) {
+          if (state.historyIndex < state.playHistory.length - 1) {
+            state.playHistory = state.playHistory.slice(0, state.historyIndex + 1);
+          }
+          state.playHistory.push(state.currentTrackIndex);
+          state.historyIndex = state.playHistory.length - 1;
+        }
+        
+        state.currentTrackIndex = index;
+        const track = state.allTracks[index];
+        
+        // Actualizar UI inmediatamente
+        DOM.playerBar.style.display = 'grid';
+        DOM.playerTitle.textContent = track.title;
+        DOM.playerArtist.textContent = track.artist;
+        ui.updatePlayerCover(track);
+        ui.updateMobileTrack(track);
+        localStorage.setItem('frekerncy-current-track-id', track.id);
+        mediaSession.update(track);
+        
+        // Intentar reproducir con las URLs disponibles
+        const urls = player.getPlaybackUrls(track);
+
+        
+        player.tryUrls(track, urls, 0);
+      },
+      
+      tryUrls: (track, urls, urlIndex) => {
+        if (urlIndex >= urls.length) {
+          // Se agotaron todas las URLs
+          alert(`Error al reproducir "${track.title}".\n\nVerifica que:\n1. La carpeta este compartida como "Cualquier persona con el enlace puede ver"\n2. El archivo no este corrupto\n3. Tu API Key tenga permisos correctos\n4. La API de Google Drive esta habilitada`);
+          state.isPlaying = false;
+          ui.updatePlayButton();
+          return;
+        }
+        
+        const url = urls[urlIndex];
+
+        
+        DOM.audio.src = url;
+        DOM.audio.load();
+        
+        // Timeout para detectar si el audio no carga
+        const loadTimeout = setTimeout(() => {
+
+          player.tryUrls(track, urls, urlIndex + 1);
+        }, 10000);
+        
+        const onCanPlay = () => {
+          clearTimeout(loadTimeout);
+          DOM.audio.removeEventListener('canplay', onCanPlay);
+          DOM.audio.removeEventListener('error', onError);
+          
+          DOM.audio.play()
+            .then(() => {
+
+              state.isPlaying = true;
+              ui.updatePlayButton();
+              ui.renderTracks();
+              mediaSession.updatePlaybackState(true);
+            })
+            .catch((e) => {
+
+              player.tryUrls(track, urls, urlIndex + 1);
+            });
+        };
+        
+        const onError = () => {
+          clearTimeout(loadTimeout);
+          DOM.audio.removeEventListener('canplay', onCanPlay);
+          DOM.audio.removeEventListener('error', onError);
+
+          player.tryUrls(track, urls, urlIndex + 1);
+        };
+        
+        DOM.audio.addEventListener('canplay', onCanPlay, { once: true });
+        DOM.audio.addEventListener('error', onError, { once: true });
+      },
+      
+      toggle: () => {
+        if (state.currentTrackIndex === -1 && state.allTracks.length > 0) {
+          player.play(0);
+          return;
+        }
+        
+        if (state.isPlaying) {
+          DOM.audio.pause();
+        } else {
+          DOM.audio.play();
+        }
+        state.isPlaying = !state.isPlaying;
+        ui.updatePlayButton();
+        ui.renderTracks();
+        mediaSession.updatePlaybackState(state.isPlaying);
+      },
+      
+      next: () => {
+        if (state.allTracks.length === 0) return;
+        
+        const tracks = player.getCurrentTracks();
+        let nextIndex;
+        
+        if (state.isShuffle) {
+          const randomIdx = Math.floor(Math.random() * tracks.length);
+          nextIndex = state.allTracks.findIndex(t => t.id === tracks[randomIdx].id);
+        } else {
+          const currentInList = tracks.findIndex(t => t.id === state.allTracks[state.currentTrackIndex]?.id);
+          const nextInList = (currentInList + 1) % tracks.length;
+          nextIndex = state.allTracks.findIndex(t => t.id === tracks[nextInList].id);
+        }
+        
+        player.play(nextIndex);
+      },
+      
+      prev: () => {
+        if (state.allTracks.length === 0) return;
+        
+        if (DOM.audio.currentTime > 3) {
+          DOM.audio.currentTime = 0;
+          return;
+        }
+        
+        if (state.isShuffle && state.playHistory.length > 0 && state.historyIndex >= 0) {
+          const prevIndex = state.playHistory[state.historyIndex];
+          state.historyIndex--;
+          player.play(prevIndex, false);
+          return;
+        }
+        
+        const tracks = player.getCurrentTracks();
+        const currentInList = tracks.findIndex(t => t.id === state.allTracks[state.currentTrackIndex]?.id);
+        let prevInList = currentInList - 1;
+        if (prevInList < 0) prevInList = tracks.length - 1;
+        const prevIndex = state.allTracks.findIndex(t => t.id === tracks[prevInList].id);
+        
+        player.play(prevIndex);
+      },
+      
+      toggleShuffle: () => {
+        state.isShuffle = !state.isShuffle;
+        DOM.shuffleBtn.classList.toggle('active', state.isShuffle);
+        
+        if (state.isShuffle) {
+          state.playHistory = [];
+          state.historyIndex = -1;
+        }
+      },
+      
+      toggleRepeat: () => {
+        const modes = ['none', 'all', 'one'];
+        const idx = modes.indexOf(state.repeatMode);
+        state.repeatMode = modes[(idx + 1) % modes.length];
+        
+        DOM.repeatBtn.classList.toggle('active', state.repeatMode !== 'none');
+        DOM.repeatBtn.innerHTML = state.repeatMode === 'one' 
+          ? `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+             </svg><span style="position: absolute; font-size: 10px; font-weight: bold;">1</span>`
+          : `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+             </svg>`;
+        DOM.repeatBtn.style.position = state.repeatMode === 'one' ? 'relative' : '';
+      },
+      
+      seek: (e) => {
+        const rect = DOM.progressBar.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        DOM.audio.currentTime = percent * DOM.audio.duration;
+      },
+      
+      setVolume: (e) => {
+        const rect = DOM.volumeSlider.getBoundingClientRect();
+        state.volume = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        DOM.audio.volume = state.volume;
+        DOM.volumeFill.style.width = `${state.volume * 100}%`;
+        localStorage.setItem('frekerncy-volume', state.volume.toString());
+      },
+      
+      toggleMute: () => {
+        if (DOM.audio.volume > 0) {
+          DOM.audio.volume = 0;
+          DOM.volumeFill.style.width = '0%';
+        } else {
+          DOM.audio.volume = state.volume || 1;
+          DOM.volumeFill.style.width = `${(state.volume || 1) * 100}%`;
+        }
+      },
+      
+      getCurrentTracks: () => {
+        let tracks;
+        if (state.currentPlaylist === 'all') {
+          tracks = state.allTracks;
+        } else {
+          const ids = state.playlists[state.currentPlaylist] || [];
+          tracks = state.allTracks.filter(t => ids.includes(t.id));
+        }
+        
+        if (state.searchQuery) {
+          const query = state.searchQuery.toLowerCase();
+          tracks = tracks.filter(t => 
+            t.title.toLowerCase().includes(query) || 
+            t.artist.toLowerCase().includes(query) ||
+            (t.album && t.album.toLowerCase().includes(query))
+          );
+        }
+        
+        return tracks;
+      },
+      
+      playFromList: (listIndex) => {
+        const tracks = player.getCurrentTracks();
+        const track = tracks[listIndex];
+        const globalIndex = state.allTracks.findIndex(t => t.id === track.id);
+        player.play(globalIndex);
+      }
+    };
+
+    // ============== UI ==============
+    const ui = {
+      init: () => {
+        document.getElementById('api-key').value = state.apiKey;
+        document.getElementById('folder-url').value = state.folderUrl;
+        document.getElementById('thumbnails-url').value = state.thumbnailsUrl;
+        document.getElementById('terabox-url').value = state.teraboxUrl;
+        DOM.storageProvider.value = state.storageProvider;
+        
+        ui.toggleProviderConfig();
+        ui.updateStatus();
+        ui.renderPlaylists();
+        ui.renderTracks();
+        ui.renderPlaylistGrid();
+        
+        DOM.audio.volume = state.volume;
+        DOM.volumeFill.style.width = `${state.volume * 100}%`;
+        
+        if (state.allTracks.length > 0) {
+          DOM.playerBar.style.display = 'grid';
+          
+          // Restore saved track and position
+          if (state.savedTrackId) {
+            const savedIndex = state.allTracks.findIndex(t => t.id === state.savedTrackId);
+            if (savedIndex !== -1) {
+              state.currentTrackIndex = savedIndex;
+              const track = state.allTracks[savedIndex];
+              
+              // Set up the audio but don't autoplay - usar URL directa
+              const urls = player.getPlaybackUrls(track);
+              DOM.audio.src = urls[0]; // Usar la primera URL
+              
+              // Update UI
+              DOM.playerTitle.textContent = track.title;
+              DOM.playerArtist.textContent = track.artist;
+              ui.updatePlayerCover(track);
+              ui.updateMobileTrack(track);
+              ui.renderTracks();
+              
+              // Restore position when audio is ready
+              DOM.audio.addEventListener('loadedmetadata', function onLoaded() {
+                if (state.savedCurrentTime > 0 && state.savedCurrentTime < DOM.audio.duration) {
+                  DOM.audio.currentTime = state.savedCurrentTime;
+                }
+                DOM.audio.removeEventListener('loadedmetadata', onLoaded);
+              });
+              
+              DOM.audio.load();
+            }
+          }
+        }
+        
+        mediaSession.init();
+      },
+      
+      toggleProviderConfig: () => {
+        const provider = DOM.storageProvider.value;
+        DOM.gdriveConfig.style.display = provider === 'gdrive' ? 'block' : 'none';
+        DOM.teraboxConfig.style.display = provider === 'terabox' ? 'block' : 'none';
+      },
+      
+      updateStatus: () => {
+        const playlistCount = Object.keys(state.playlists).filter(k => state.playlists[k].length > 0).length;
+        
+        if (state.allTracks.length > 0) {
+          DOM.statusDot.classList.add('connected');
+          DOM.statusText.innerHTML = `<strong>${state.allTracks.length}</strong> canciones en <strong>${playlistCount}</strong> playlists`;
+        } else if (state.storageProvider === 'gdrive' && state.apiKey && state.folderUrl) {
+          DOM.statusDot.classList.remove('connected');
+          DOM.statusText.textContent = 'Configurado - Haz clic en "Cargar musica"';
+        } else if (state.storageProvider === 'terabox' && state.teraboxUrl) {
+          DOM.statusDot.classList.remove('connected');
+          DOM.statusText.textContent = 'Configurado - Haz clic en "Cargar musica"';
+        } else {
+          DOM.statusDot.classList.remove('connected');
+          DOM.statusText.textContent = 'Sin configurar';
+        }
+      },
+      
+      updatePlayButton: () => {
+        DOM.playIcon.innerHTML = state.isPlaying 
+          ? '<path d="M6 4h4v16H6zm8 0h4v16h-4z"/>'
+          : '<path d="M8 5v14l11-7z"/>';
+      },
+      
+      updateProgress: () => {
+        const percent = (DOM.audio.currentTime / DOM.audio.duration) * 100 || 0;
+        DOM.progressFill.style.width = `${percent}%`;
+        DOM.currentTime.textContent = utils.formatTime(DOM.audio.currentTime);
+        DOM.duration.textContent = utils.formatTime(DOM.audio.duration);
+        mediaSession.updatePositionState();
+        
+        // Save current time to localStorage periodically
+        if (state.currentTrackIndex !== -1 && !isNaN(DOM.audio.currentTime)) {
+          localStorage.setItem('frekerncy-current-time', DOM.audio.currentTime.toString());
+        }
+      },
+      
+      getThumbnailUrl: (track) => {
+        if (!state.imageFiles._byName || Object.keys(state.imageFiles._byName).length === 0) {
+          return null;
+        }
+        
+        // Intentar con imageBaseName primero
+        if (track.imageBaseName) {
+          const imageId = state.imageFiles._byName[track.imageBaseName];
+          if (imageId) {
+            return utils.getThumbnailUrl(imageId, state.apiKey);
+          }
+        }
+        
+        // Intentar con el filename sin extension
+        if (track.filename) {
+          const baseName = track.filename.replace(/\.[^.]+$/, '').toLowerCase().trim();
+          const imageId = state.imageFiles._byName[baseName];
+          if (imageId) {
+            return utils.getThumbnailUrl(imageId, state.apiKey);
+          }
+        }
+        
+        // Intentar con el titulo (para tracks antiguas)
+        if (track.title) {
+          const titleBaseName = track.title.toLowerCase().trim();
+          const imageId = state.imageFiles._byName[titleBaseName];
+          if (imageId) {
+            return utils.getThumbnailUrl(imageId, state.apiKey);
+          }
+          
+          // Intentar con "Artista - Titulo"
+          if (track.artist && track.artist !== 'Desconocido') {
+            const fullName = `${track.artist} - ${track.title}`.toLowerCase().trim();
+            const imageId2 = state.imageFiles._byName[fullName];
+            if (imageId2) {
+              return utils.getThumbnailUrl(imageId2, state.apiKey);
+            }
+          }
+        }
+        
+        // Verificar por ID de track (legacy)
+        if (state.imageFiles[track.id]) {
+          return utils.getThumbnailUrl(state.imageFiles[track.id], state.apiKey);
+        }
+        
+        return null;
+      },
+      
+      updatePlayerCover: (track) => {
+        const thumbnailUrl = ui.getThumbnailUrl(track);
+        const defaultIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>`;
+        
+        if (thumbnailUrl) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            DOM.playerCover.innerHTML = `<img src="${thumbnailUrl}" alt="${track.title}">`;
+          };
+          img.onerror = () => {
+            DOM.playerCover.innerHTML = defaultIcon;
+          };
+          img.src = thumbnailUrl;
+        } else {
+          DOM.playerCover.innerHTML = defaultIcon;
+        }
+      },
+      
+      updateMobileTrack: (track) => {
+        if (!DOM.mobileCurrentTrack) return;
+        
+        DOM.mobileCurrentTrack.classList.remove('hidden');
+        DOM.mobileTrackTitle.textContent = track.title;
+        DOM.mobileTrackArtist.textContent = track.artist;
+        
+        const thumbnailUrl = ui.getThumbnailUrl(track);
+        const defaultIcon = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>`;
+        
+        if (thumbnailUrl) {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            DOM.mobileTrackCover.innerHTML = `<img src="${thumbnailUrl}" alt="${track.title}">`;
+          };
+          img.onerror = () => {
+            DOM.mobileTrackCover.innerHTML = defaultIcon;
+          };
+          img.src = thumbnailUrl;
+        } else {
+          DOM.mobileTrackCover.innerHTML = defaultIcon;
+        }
+      },
+      
+      renderPlaylists: () => {
+        const section = document.getElementById('playlists-section');
+        const nav = document.getElementById('playlists-nav');
+        const playlistNames = Object.keys(state.playlists).filter(name => state.playlists[name].length > 0);
+        
+        document.getElementById('all-count').textContent = state.allTracks.length;
+        
+        if (playlistNames.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+        
+        section.style.display = 'block';
+        nav.innerHTML = playlistNames.map(name => `
+          <a href="#" class="nav-item ${state.currentPlaylist === name ? 'active' : ''}" data-view="player" data-playlist="${name}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span>${name}</span>
+            <span class="playlist-count">${state.playlists[name].length}</span>
+          </a>
+        `).join('');
+        
+        nav.querySelectorAll('.nav-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.preventDefault();
+            ui.selectPlaylist(item.dataset.playlist);
+          });
+        });
+      },
+      
+      renderPlaylistGrid: () => {
+        const playlistNames = Object.keys(state.playlists).filter(name => state.playlists[name].length > 0);
+        
+        let html = `
+          <div class="playlist-card ${state.currentPlaylist === 'all' ? 'active' : ''}" data-playlist="all">
+            <div class="playlist-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+              </svg>
+            </div>
+            <div class="playlist-card-name">Todas</div>
+            <div class="playlist-card-count">${state.allTracks.length} canciones</div>
+          </div>
+        `;
+        
+        html += playlistNames.map(name => `
+          <div class="playlist-card ${state.currentPlaylist === name ? 'active' : ''}" data-playlist="${name}">
+            <div class="playlist-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+              </svg>
+            </div>
+            <div class="playlist-card-name">${name}</div>
+            <div class="playlist-card-count">${state.playlists[name].length} canciones</div>
+          </div>
+        `).join('');
+        
+        DOM.playlistGrid.innerHTML = html;
+        
+        DOM.playlistGrid.querySelectorAll('.playlist-card').forEach(card => {
+          card.addEventListener('click', () => {
+            ui.selectPlaylist(card.dataset.playlist);
+            ui.showView('player');
+          });
+        });
+      },
+      
+      selectPlaylist: (name) => {
+        state.currentPlaylist = name;
+        state.searchQuery = '';
+        DOM.searchInput.value = '';
+        DOM.searchClear.classList.remove('visible');
+        
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll(`[data-playlist="${name}"]`).forEach(n => n.classList.add('active'));
+        
+        document.getElementById('view-title').textContent = name === 'all' ? 'Todas las canciones' : name;
+        
+        ui.renderTracks();
+        ui.renderPlaylists();
+        ui.renderPlaylistGrid();
+      },
+      
+      renderTracks: () => {
+        const tracks = player.getCurrentTracks();
+        
+        DOM.searchContainer.style.display = state.allTracks.length > 0 ? 'block' : 'none';
+        
+        if (tracks.length === 0) {
+          DOM.trackList.innerHTML = '';
+          if (state.searchQuery) {
+            DOM.emptyState.querySelector('h3').textContent = 'Sin resultados';
+            DOM.emptyState.querySelector('p').textContent = `No se encontraron canciones para "${state.searchQuery}"`;
+            DOM.emptyState.querySelector('button').style.display = 'none';
+          } else {
+            DOM.emptyState.querySelector('h3').textContent = 'Sin canciones';
+            DOM.emptyState.querySelector('p').textContent = 'Configura tu carpeta para cargar tu musica.';
+            DOM.emptyState.querySelector('button').style.display = '';
+          }
+          DOM.emptyState.style.display = 'block';
+          return;
+        }
+
+        DOM.emptyState.style.display = 'none';
+        
+        const fragment = document.createDocumentFragment();
+        
+        tracks.forEach((track, index) => {
+          const globalIndex = state.allTracks.findIndex(t => t.id === track.id);
+          const isCurrentTrack = state.currentTrackIndex === globalIndex;
+          const thumbnailUrl = ui.getThumbnailUrl(track);
+          
+          const item = document.createElement('div');
+          item.className = `track-item ${isCurrentTrack ? 'playing' : ''}`;
+          item.dataset.index = index;
+          
+          item.innerHTML = `
+            <div class="track-thumbnail">
+              <div class="fallback-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/>
+                </svg>
+              </div>
+              ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="${track.title}" loading="lazy">` : ''}
+              <div class="play-overlay">
+                ${isCurrentTrack && state.isPlaying 
+                  ? '<div class="playing-indicator"><span></span><span></span><span></span><span></span></div>'
+                  : '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'}
+              </div>
+            </div>
+            <div class="track-info">
+              <div class="track-title">${track.title}</div>
+              <div class="track-artist">${track.artist}</div>
+              ${state.currentPlaylist === 'all' && track.playlist ? `<div class="track-folder">${track.playlist}</div>` : ''}
+            </div>
+            <div class="track-album">${track.album || '-'}</div>
+            <div class="track-duration">-</div>
+          `;
+          
+          fragment.appendChild(item);
+        });
+        
+        DOM.trackList.innerHTML = '';
+        DOM.trackList.appendChild(fragment);
+        
+        DOM.trackList.onclick = (e) => {
+          const item = e.target.closest('.track-item');
+          if (item) {
+            player.playFromList(parseInt(item.dataset.index));
+          }
+        };
+      },
+      
+      showView: (viewName) => {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        
+        if (viewName === 'player') {
+          document.querySelectorAll(`[data-playlist="${state.currentPlaylist}"]`).forEach(n => n.classList.add('active'));
+        } else {
+          document.querySelectorAll(`[data-view="${viewName}"]`).forEach(n => n.classList.add('active'));
+        }
+        
+        document.getElementById(`${viewName}-view`).classList.add('active');
+        
+        if (viewName === 'playlists') {
+          ui.renderPlaylistGrid();
+        }
+      }
+    };
+
+    // ============== ACTIONS ==============
+    function saveApiKey() {
+      state.apiKey = document.getElementById('api-key').value.trim();
+      localStorage.setItem('frekerncy-api-key', state.apiKey);
+      ui.updateStatus();
+      alert('API Key guardada');
+    }
+
+    async function scanThumbnailsFolder(folderId) {
+      // Scan thumbnails folder recursively with pagination
+      let pageToken = null;
+      
+      do {
+        const url = new URL('https://www.googleapis.com/drive/v3/files');
+        url.searchParams.set('q', `'${folderId}' in parents and trashed=false`);
+        url.searchParams.set('fields', 'nextPageToken,files(id,name,mimeType)');
+        url.searchParams.set('key', state.apiKey);
+        url.searchParams.set('pageSize', '100');
+        if (pageToken) {
+          url.searchParams.set('pageToken', pageToken);
+        }
+        
+        const response = await fetch(url.toString());
+        
+        if (!response.ok) {
+          throw new Error('Error al acceder a la carpeta de miniaturas');
+        }
+        
+        const data = await response.json();
+        const files = data.files || [];
+        
+        for (const file of files) {
+          if (file.mimeType === 'application/vnd.google-apps.folder') {
+            // Recursively scan subfolders
+            await scanThumbnailsFolder(file.id);
+          } else {
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (IMAGE_EXTENSIONS.includes(ext)) {
+              const baseName = file.name.replace(/\.[^.]+$/, '').toLowerCase().trim();
+              if (!state.imageFiles._byName) {
+                state.imageFiles._byName = {};
+              }
+              state.imageFiles._byName[baseName] = file.id;
+
+            }
+          }
+        }
+        
+        pageToken = data.nextPageToken;
+      } while (pageToken);
+    }
+
+    async function loadFromDrive() {
+      const url = document.getElementById('folder-url').value.trim();
+      const thumbnailsUrlValue = document.getElementById('thumbnails-url').value.trim();
+      
+      if (!state.apiKey) {
+        alert('Por favor, ingresa tu API Key de Google primero');
+        return;
+      }
+      
+      if (!url) {
+        alert('Por favor, ingresa la URL de la carpeta de Google Drive');
+        return;
+      }
+
+      const folderId = utils.extractFolderId(url);
+      if (!folderId) {
+        alert('URL de carpeta invalida');
+        return;
+      }
+
+      // Get thumbnails folder ID if provided
+      let thumbnailsFolderId = null;
+      if (thumbnailsUrlValue) {
+        thumbnailsFolderId = utils.extractFolderId(thumbnailsUrlValue);
+        if (!thumbnailsFolderId) {
+          alert('URL de carpeta de miniaturas invalida');
+          return;
+        }
+      }
+
+      state.folderUrl = url;
+      state.thumbnailsUrl = thumbnailsUrlValue;
+      state.storageProvider = 'gdrive';
+      localStorage.setItem('frekerncy-folder-url', state.folderUrl);
+      localStorage.setItem('frekerncy-thumbnails-url', state.thumbnailsUrl);
+      localStorage.setItem('frekerncy-provider', 'gdrive');
+
+      DOM.loading.style.display = 'flex';
+      DOM.loadingText.textContent = 'Conectando con Google Drive...';
+      document.getElementById('load-btn').disabled = true;
+
+      try {
+        state.allTracks = [];
+        state.playlists = {};
+        state.imageFiles = { _byName: {} };
+        
+        // First, scan the thumbnails folder if provided
+        if (thumbnailsFolderId) {
+          DOM.loadingText.textContent = 'Cargando miniaturas...';
+          await scanThumbnailsFolder(thumbnailsFolderId);
+
+        }
+        
+        // Then scan the music folder
+        DOM.loadingText.textContent = 'Escaneando carpetas...';
+        await api.scanFolder(folderId, 'root', true);
+        
+        localStorage.setItem('frekerncy-tracks', JSON.stringify(state.allTracks));
+        localStorage.setItem('frekerncy-playlists', JSON.stringify(state.playlists));
+        localStorage.setItem('frekerncy-images', JSON.stringify(state.imageFiles));
+        
+        ui.renderPlaylists();
+        ui.renderTracks();
+        ui.renderPlaylistGrid();
+        ui.updateStatus();
+        
+        if (state.allTracks.length > 0) {
+          DOM.playerBar.style.display = 'grid';
+          const playlistCount = Object.keys(state.playlists).filter(k => state.playlists[k].length > 0).length;
+          const imageCount = Object.keys(state.imageFiles._byName || {}).length;
+          alert(`Se cargaron ${state.allTracks.length} canciones en ${playlistCount} playlists.\n${imageCount} miniaturas encontradas.`);
+        } else {
+          alert('No se encontraron archivos de audio en la carpeta');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar la musica: ' + error.message);
+      } finally {
+        DOM.loading.style.display = 'none';
+        document.getElementById('load-btn').disabled = false;
+      }
+    }
+
+    async function loadFromTeraBox() {
+      const url = document.getElementById('terabox-url').value.trim();
+      
+      if (!url) {
+        alert('Por favor, ingresa la URL de la carpeta de TeraBox');
+        return;
+      }
+
+      state.teraboxUrl = url;
+      state.storageProvider = 'terabox';
+      localStorage.setItem('frekerncy-terabox-url', state.teraboxUrl);
+      localStorage.setItem('frekerncy-provider', 'terabox');
+
+      alert('TeraBox requiere autenticacion para acceder a los archivos. Por limitaciones de seguridad del navegador, la integracion directa con TeraBox no esta disponible actualmente.\n\nPor favor, usa Google Drive como alternativa.');
+    }
+
+    function clearLibrary() {
+      if (confirm('Esto eliminara todas las canciones de tu biblioteca local.')) {
+        state.allTracks = [];
+        state.playlists = {};
+        state.imageFiles = { _byName: {} };
+        state.playHistory = [];
+        state.historyIndex = -1;
+        localStorage.removeItem('frekerncy-tracks');
+        localStorage.removeItem('frekerncy-playlists');
+        localStorage.removeItem('frekerncy-images');
+        localStorage.removeItem('frekerncy-current-track-id');
+        localStorage.removeItem('frekerncy-current-time');
+        localStorage.removeItem('frekerncy-thumbnails-url');
+        
+        DOM.audio.pause();
+        state.currentTrackIndex = -1;
+        state.isPlaying = false;
+        DOM.playerBar.style.display = 'none';
+        
+        // Hide mobile current track
+        if (DOM.mobileCurrentTrack) {
+          DOM.mobileCurrentTrack.classList.add('hidden');
+        }
+        
+        ui.renderPlaylists();
+        ui.renderTracks();
+        ui.renderPlaylistGrid();
+        ui.updateStatus();
+      }
+    }
+
+    // ============== EVENT LISTENERS ==============
+    DOM.playBtn.addEventListener('click', player.toggle);
+    DOM.prevBtn.addEventListener('click', player.prev);
+    DOM.nextBtn.addEventListener('click', player.next);
+    DOM.shuffleBtn.addEventListener('click', player.toggleShuffle);
+    DOM.repeatBtn.addEventListener('click', player.toggleRepeat);
+    DOM.progressBar.addEventListener('click', player.seek);
+    DOM.volumeSlider.addEventListener('click', player.setVolume);
+    DOM.volumeBtn.addEventListener('click', player.toggleMute);
+    DOM.storageProvider.addEventListener('change', () => {
+      state.storageProvider = DOM.storageProvider.value;
+      localStorage.setItem('frekerncy-provider', state.storageProvider);
+      ui.toggleProviderConfig();
+    });
+
+    DOM.audio.addEventListener('timeupdate', ui.updateProgress);
+    DOM.audio.addEventListener('ended', () => {
+      if (state.repeatMode === 'one') {
+        DOM.audio.currentTime = 0;
+        DOM.audio.play();
+      } else if (state.repeatMode === 'all' || state.currentTrackIndex < state.allTracks.length - 1) {
+        player.next();
+      } else {
+        state.isPlaying = false;
+        ui.updatePlayButton();
+        ui.renderTracks();
+        mediaSession.updatePlaybackState(false);
+      }
+    });
+
+    DOM.audio.addEventListener('play', () => {
+      state.isPlaying = true;
+      ui.updatePlayButton();
+      mediaSession.updatePlaybackState(true);
+    });
+
+    DOM.audio.addEventListener('pause', () => {
+      state.isPlaying = false;
+      ui.updatePlayButton();
+      mediaSession.updatePlaybackState(false);
+    });
+
+    DOM.audio.addEventListener('error', () => {
+      const track = state.allTracks[state.currentTrackIndex];
+      if (track) {
+
+        player.tryAlternative(track);
+      }
+    });
+
+    // Search
+    const handleSearch = utils.debounce(() => {
+      state.searchQuery = DOM.searchInput.value.trim();
+      DOM.searchClear.classList.toggle('visible', state.searchQuery.length > 0);
+      ui.renderTracks();
+    }, 200);
+
+    DOM.searchInput.addEventListener('input', handleSearch);
+    DOM.searchClear.addEventListener('click', () => {
+      DOM.searchInput.value = '';
+      state.searchQuery = '';
+      DOM.searchClear.classList.remove('visible');
+      ui.renderTracks();
+    });
+
+    // Navigation
+    document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const view = item.dataset.view;
+        const playlist = item.dataset.playlist;
+        
+        if (playlist) {
+          ui.selectPlaylist(playlist);
+          ui.showView('player');
+        } else if (view) {
+          ui.showView(view);
+        }
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      
+      switch(e.code) {
+        case 'Space':
+          e.preventDefault();
+          player.toggle();
+          break;
+        case 'ArrowRight':
+          if (e.shiftKey) player.next();
+          else DOM.audio.currentTime += 10;
+          break;
+        case 'ArrowLeft':
+          if (e.shiftKey) player.prev();
+          else DOM.audio.currentTime -= 10;
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          state.volume = Math.min(1, state.volume + 0.1);
+          DOM.audio.volume = state.volume;
+          DOM.volumeFill.style.width = `${state.volume * 100}%`;
+          localStorage.setItem('frekerncy-volume', state.volume.toString());
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          state.volume = Math.max(0, state.volume - 0.1);
+          DOM.audio.volume = state.volume;
+          DOM.volumeFill.style.width = `${state.volume * 100}%`;
+          localStorage.setItem('frekerncy-volume', state.volume.toString());
+          break;
+      }
+    });
+
+    // Initialize
+    ui.init();
+  </script>
+</body>
+</html>
