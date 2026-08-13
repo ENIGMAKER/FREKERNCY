@@ -87,12 +87,18 @@
       background: transparent;
     }
 
+    html {
+      overflow-x: hidden;
+      width: 100%;
+    }
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg-primary);
       color: var(--text-primary);
       min-height: 100vh;
       overflow-x: hidden;
+      width: 100%;
     }
 
     .app { display: flex; flex-direction: column; min-height: 100vh; }
@@ -625,6 +631,8 @@
       opacity: 0;
       pointer-events: none;
       transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+      overflow-x: hidden;
+      max-width: 100vw;
     }
 
     .lyrics-panel.open {
@@ -739,6 +747,7 @@
       position: relative;
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 42vh 24px;
       display: flex;
       flex-direction: column;
@@ -755,6 +764,9 @@
       border-radius: 10px;
       cursor: pointer;
       opacity: 0.5;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
       transition: color 0.25s ease, transform 0.25s ease, opacity 0.25s ease, text-shadow 0.25s ease;
     }
 
@@ -764,6 +776,7 @@
       color: var(--purple-primary);
       opacity: 1;
       transform: scale(1.05);
+      transform-origin: center;
       text-shadow: 0 0 24px var(--purple-glow);
     }
 
@@ -1411,6 +1424,9 @@
       historyIndex: -1,
       savedTrackId: localStorage.getItem('frekerncy-current-track-id') || null,
       savedCurrentTime: parseFloat(localStorage.getItem('frekerncy-current-time') || '0'),
+      // Duraciones ya conocidas (id de archivo de Mega -> "m:ss"), para no tener
+      // que volver a descargar la cancion entera solo para leer su duracion.
+      durations: JSON.parse(localStorage.getItem('frekerncy-durations') || '{}'),
       thumbnailCache: {} // Cache para URLs de miniaturas
     };
 
@@ -1471,14 +1487,37 @@
     const utils = {
       cleanFilename: (name) => {
         let clean = name.replace(/\.[^.]+$/, '');
-        // Try to extract artist - title format
-        const parts = clean.split(' - ');
-        if (parts.length >= 2) {
-          return { title: parts.slice(1).join(' - ').trim(), artist: parts[0].trim() };
+
+        // El numero inicial ("1. ", "02. ", etc.) es el orden de la cancion,
+        // no parte del nombre del artista. Se extrae aparte y, si no esta,
+        // se ignora y se pasa directo al artista/titulo.
+        let order = null;
+        const orderMatch = clean.match(/^(\d+)\.\s*(.+)$/);
+        if (orderMatch) {
+          order = parseInt(orderMatch[1], 10);
+          clean = orderMatch[2].trim();
         }
-        // Remove track numbers
-        clean = clean.replace(/^\d+[\s._-]*/, '').replace(/_/g, ' ').trim();
-        return { title: clean, artist: '' };
+
+        // Separa por " - ": primer guion divide artista/titulo.
+        const parts = clean.split(' - ').map(p => p.trim()).filter(p => p.length > 0);
+
+        let artist = '';
+        let title = '';
+        if (parts.length >= 2) {
+          artist = parts[0];
+          title = parts.slice(1).join(' - ');
+        } else if (parts.length === 1) {
+          title = parts[0];
+        } else {
+          title = clean;
+        }
+
+        // Si no habia formato "artista - titulo", limpia numeros de pista residuales.
+        if (!artist) {
+          title = title.replace(/^\d+[\s._-]*/, '').replace(/_/g, ' ').trim();
+        }
+
+        return { title, artist, order };
       },
       
       formatTime: (seconds) => {
@@ -1823,16 +1862,29 @@
         }
 
         // Canciones
-        for (const file of audioFiles) {
+        // Parsea primero para poder ordenar por el numero de pista ("1.", "2.", ...)
+        // cuando este presente; si no lo esta, conserva el orden original.
+        const parsedFiles = audioFiles.map(file => ({ file, parsed: utils.cleanFilename(file.name) }));
+        parsedFiles.sort((a, b) => {
+          const oa = a.parsed.order;
+          const ob = b.parsed.order;
+          if (oa != null && ob != null) return oa - ob;
+          if (oa != null) return -1;
+          if (ob != null) return 1;
+          return 0;
+        });
+
+        for (const { file, parsed } of parsedFiles) {
           const id = megaId(file);
           state.megaFiles[id] = file;
-          const parsed = utils.cleanFilename(file.name);
           const audioBaseName = file.name.replace(/\.[^.]+$/, '').toLowerCase().trim();
 
           const track = {
             id,
             title: parsed.title,
             artist: parsed.artist || 'Desconocido',
+            order: parsed.order,
+            duration: state.durations[id] || '',
             album: isRoot ? '' : playlistName,
             playlist: isRoot ? null : playlistName,
             filename: file.name,
@@ -2484,6 +2536,7 @@
           const item = document.createElement('div');
           item.className = `track-item ${isCurrentTrack ? 'playing' : ''}`;
           item.dataset.index = index;
+          item.dataset.trackId = track.id;
           if (imageId && !thumbnailUrl) {
             item.dataset.thumbId = imageId;
           }
@@ -2507,8 +2560,8 @@
               <div class="track-artist">${track.artist}</div>
               ${state.currentPlaylist === 'all' && track.playlist ? `<div class="track-folder">${track.playlist}</div>` : ''}
             </div>
-            <div class="track-album">${track.album || '-'}</div>
-            <div class="track-duration">-</div>
+            <div class="track-album">${typeof track.order === 'number' ? track.order : '-'}</div>
+            <div class="track-duration">${track.duration || '-'}</div>
           `;
           
           fragment.appendChild(item);
@@ -2637,6 +2690,7 @@
         state.playHistory = [];
         state.historyIndex = -1;
         lyrics.store = {};
+        state.durations = {};
         utils._blobCache = {};
         localStorage.removeItem('frekerncy-tracks');
         localStorage.removeItem('frekerncy-playlists');
@@ -2644,6 +2698,7 @@
         localStorage.removeItem('frekerncy-current-track-id');
         localStorage.removeItem('frekerncy-current-time');
         localStorage.removeItem('frekerncy-lyrics');
+        localStorage.removeItem('frekerncy-durations');
         
         DOM.audio.pause();
         state.currentTrackIndex = -1;
@@ -2729,6 +2784,22 @@
       state.isPlaying = false;
       ui.updatePlayButton();
       mediaSession.updatePlaybackState(false);
+    });
+
+    // Guarda la duracion real (leida del propio archivo de audio) en la pista
+    // actual y refresca su celda en la lista, sin volver a renderizar todo.
+    // Tambien la persiste en localStorage para no tener que volver a descargar
+    // el archivo entero solo para saber cuanto dura.
+    DOM.audio.addEventListener('loadedmetadata', () => {
+      const track = state.allTracks[state.currentTrackIndex];
+      if (!track || isNaN(DOM.audio.duration) || !isFinite(DOM.audio.duration)) return;
+      const formatted = utils.formatTime(DOM.audio.duration);
+      if (track.duration === formatted) return;
+      track.duration = formatted;
+      state.durations[track.id] = formatted;
+      localStorage.setItem('frekerncy-durations', JSON.stringify(state.durations));
+      const cell = DOM.trackList.querySelector(`.track-item[data-track-id="${track.id}"] .track-duration`);
+      if (cell) cell.textContent = formatted;
     });
 
 
